@@ -1,0 +1,38 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://icon.png" type="Texture" id=2]
+
+[sub_resource type="SpatialMaterial" id=1]
+albedo_texture = ExtResource( 2 )
+
+[node name="Game" type="Node"]
+
+[node name="Root3D" type="Spatial" parent="."]
+
+[node name="CSGBox2" type="CSGBox" parent="Root3D"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 22.9135, -0.825912, -0.02421 )
+use_collision = true
+width = 5.909
+height = 4.142
+depth = 10.0
+
+[node name="CSGTorus" type="CSGTorus" parent="Root3D/CSGBox2"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0283461, 1.50891, -0.0210876 )
+operation = 2
+inner_radius = 0.93
+outer_radius = 3.897
+sides = 39
+ring_sides = 64
+
+[node name="CSGBox" type="CSGBox" parent="Root3D"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0257511, -2.86905, 0.0191598 )
+use_collision = true
+width = 100.0
+depth = 100.0
+material = SubResource( 1 )
+
+[node name="CSGBox3" type="CSGBox" parent="Root3D"]
+transform = Transform( 0.928304, 0.371822, 0, -0.371822, 0.928304, 0, 0, 0, 1, -35.3551, -3.1916, -0.0368862 )
+width = 21.236
+height = 10.808
+depth = 14.509

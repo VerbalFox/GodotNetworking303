@@ -1,0 +1,97 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://Scripts/MenuManager.cs" type="Script" id=1]
+
+[node name="MenuManager" type="Control"]
+margin_right = 3.0
+margin_bottom = 1.0
+script = ExtResource( 1 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="CheckBox" type="CheckBox" parent="."]
+margin_left = 66.5898
+margin_top = 199.32
+margin_right = 134.59
+margin_bottom = 223.32
+text = "Host"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="DebugTextLabel" type="RichTextLabel" parent="."]
+anchor_left = 0.00246353
+anchor_top = -0.00840912
+anchor_right = 0.00246429
+anchor_bottom = -0.00840912
+margin_left = 273.532
+margin_top = 42.0958
+margin_right = 990.532
+margin_bottom = 549.095
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Connect" type="Button" parent="."]
+margin_left = 64.3908
+margin_top = 109.154
+margin_right = 239.391
+margin_bottom = 144.154
+rect_pivot_offset = Vector2( 47.04, 35 )
+text = "Connect"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Submit" type="Button" parent="."]
+margin_left = 64.8058
+margin_top = 150.74
+margin_right = 239.805
+margin_bottom = 185.74
+rect_pivot_offset = Vector2( 47.04, 35 )
+text = "Start Game"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="PortTextEdit" type="TextEdit" parent="."]
+margin_left = 62.9898
+margin_top = 65.556
+margin_right = 239.99
+margin_bottom = 99.556
+rect_pivot_offset = Vector2( -256.666, -21.3574 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="IpTextEdit" type="TextEdit" parent="."]
+margin_left = 63.1968
+margin_top = 23.49
+margin_right = 240.196
+margin_bottom = 57.49
+rect_pivot_offset = Vector2( -256.666, -21.3574 )
+context_menu_enabled = false
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="PortLabel" type="Label" parent="."]
+margin_left = 21.0958
+margin_top = 74.312
+margin_right = 51.0958
+margin_bottom = 88.312
+text = "Port:"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="IpLabel" type="Label" parent="."]
+margin_left = 20.3198
+margin_top = 34.217
+margin_right = 42.3198
+margin_bottom = 48.217
+text = "IP:"
+__meta__ = {
+"_edit_use_anchors_": false
+}
