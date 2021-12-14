@@ -3,6 +3,7 @@ using System;
 
 public class Player : KinematicBody
 {
+    private const float dashSpeed = 50f;
     NetworkManager networkManager;
     public int playerId = 0;
     public Vector3 mostRecentReceivedPosition = new Vector3();
@@ -95,6 +96,7 @@ public class Player : KinematicBody
                 KinematicCollision kinematicCollision = GetLastSlideCollision();
                 isDashing = false;
                 timeDashing = 0f;
+                camera.Fov = 90;
                 
                 if (networkManager.isServer) {
                     networkManager.SendCollisionClient(kinematicCollision.Position, kinematicCollision.Normal, collidedPlayer.GlobalTransform.origin, collidedPlayer.playerId);
@@ -112,6 +114,7 @@ public class Player : KinematicBody
     {
         timeSinceLastPositionUpdate += delta;
         
+        //Prediction + Linear Interpolation
         GlobalTransform = new Transform(
             GlobalTransform.basis.Column0,
             GlobalTransform.basis.Column1,
@@ -132,6 +135,7 @@ public class Player : KinematicBody
 
         if (timeDashing > .5f) {
             timeDashing = 0f;
+            camera.Fov = 90;
             isDashing = false;
         }
     }
@@ -159,6 +163,7 @@ public class Player : KinematicBody
         }
 
         if (Input.IsActionJustPressed("dash") && canDash) {
+            camera.Fov = 120;
             isDashing = true;
             canDash = false;
         }
@@ -191,7 +196,7 @@ public class Player : KinematicBody
 
         float speed;
         speed = isWalking || forcedWalk ? moveWalkSpeed : moveSpeed;
-        speed = isDashing ? 50f : speed;
+        speed = isDashing ? dashSpeed : speed;
 
         Vector3 target = direction * speed;
 
@@ -322,8 +327,8 @@ public class Player : KinematicBody
     }
 
     public void Launch(Vector3 position, Vector3 normal, Vector3 playerPosition) {
-        int launchPower = 1000;
-        velocity.y += 25;
+        int launchPower = 2000;
+        velocity.y += 30;
         hasFloorContact = false;
         velocity.x += normal.x * launchPower;
         velocity.z += normal.z * launchPower;

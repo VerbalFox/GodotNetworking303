@@ -35,6 +35,9 @@ public class NetworkPlayer {
 public class NetworkManager : Node
 {
     private const float timeSyncPacketSendIncrement = 5f;
+    private const float acknolodgementTimeToResendPacket = .2f;
+    private const float positionUpdateFrequency = .05f;
+    private const float timeSyncFrequency = 5f;
 
     // Declare member variables here. Examples:
     // private int a = 2;
@@ -42,9 +45,11 @@ public class NetworkManager : Node
     Random rnd;
 	UdpClient udpClient;
 	public double timeElapsed = 0, timeSinceLastTimeSync = 0, timeSinceLastPositionUpdate = 0;
+	//Network Id for establishing unique connections. Player Id for establishing which player belongs to which connection.
 	public int networkId = 0;
 	public int playerId = 0;
 	public int playerCount = 0;
+	//Differentiate between server and client.
 	public bool isServer = false;
 	private List<short> acknowledgementTokens;
 	public List<NetworkConnection> connections;
@@ -68,6 +73,7 @@ public class NetworkManager : Node
 
 		playerScene = GD.Load<PackedScene>("res://Scenes/Player.tscn");
 		sceneSwitcher = GetNode<SceneSwitcher>("/root/SceneSwitcher");
+
 	}
 
 	public void OpenSocket(int port) {
@@ -134,29 +140,33 @@ public class NetworkManager : Node
 
 	private void SendToAllConnections(byte[] stream)
 	{
-		foreach (var connection in connections) {
-			udpClient.Send(stream, stream.Length, connection.ip, connection.port);
+		if (udpClient != null) {
+			foreach (var connection in connections) {
+				udpClient.Send(stream, stream.Length, connection.ip, connection.port);
 
-			short ackToken = Packet.GetAcknowledgementTokenFromStream(stream);
-			PacketType packetType = Packet.GetPacketTypeFromStream(stream);
+				short ackToken = Packet.GetAcknowledgementTokenFromStream(stream);
+				PacketType packetType = Packet.GetPacketTypeFromStream(stream);
 
-			if (ackToken != 0 && packetType != PacketType.AcknowledgementResponse)
-			{
-				Task.Run(() => { AcknowledgementPacketSender(ackToken, stream, connection.ip, connection.port); });
+				if (ackToken != 0 && packetType != PacketType.AcknowledgementResponse)
+				{
+					Task.Run(() => { AcknowledgementPacketSender(ackToken, stream, connection.ip, connection.port); });
+				}
 			}
 		}
 	}
 
 	private void SendToSingleConnection(byte[] stream, int index)
 	{
-		udpClient.Send(stream, stream.Length, connections[index].ip, connections[index].port);
+		if (udpClient != null) {
+			udpClient.Send(stream, stream.Length, connections[index].ip, connections[index].port);
 
-		short ackToken = Packet.GetAcknowledgementTokenFromStream(stream);
-		PacketType packetType = Packet.GetPacketTypeFromStream(stream);
+			short ackToken = Packet.GetAcknowledgementTokenFromStream(stream);
+			PacketType packetType = Packet.GetPacketTypeFromStream(stream);
 
-		if (ackToken != 0 && packetType != PacketType.AcknowledgementResponse)
-		{
-			Task.Run(() => { AcknowledgementPacketSender(ackToken, stream, connections[index].ip, connections[index].port); });
+			if (ackToken != 0 && packetType != PacketType.AcknowledgementResponse)
+			{
+				Task.Run(() => { AcknowledgementPacketSender(ackToken, stream, connections[index].ip, connections[index].port); });
+			}
 		}
 	}
 
@@ -167,12 +177,16 @@ public class NetworkManager : Node
 		while (!acknowlodgementArrived) {
 			foreach (var tokens in acknowledgementTokens.ToList()) {
 				if (tokens == token) {
+					//Protect list before removing token.
+					tokenListMutex.WaitOne();
 					acknowledgementTokens.Remove(tokens);
+					tokenListMutex.ReleaseMutex();
 					acknowlodgementArrived = true;
 				}
 			}
 
-			if (timeElapsed > timeSinceStreamLastSent + .2f) {
+			//If Token didn't arrive before acknolodgementTimeToResendPacket passed, send again.
+			if (timeElapsed > timeSinceStreamLastSent + acknolodgementTimeToResendPacket) {
 				GD.Print("Acknolodgement not arrived, resending packet: " + Packet.GetPacketTypeFromStream(stream));
 				udpClient.Send(stream, stream.Length, ip, port);
 				timeSinceStreamLastSent = timeElapsed;
@@ -373,55 +387,62 @@ public class NetworkManager : Node
 
 					break;
 				case PacketType.PositionUpdateClient:
-					ServerPositionUpdateClientPacket serverPositionUpdateClientPacket = new ServerPositionUpdateClientPacket();
-					serverPositionUpdateClientPacket.Deserialise(receivedResults.Buffer);
+					if (gameStarted) {
+						ServerPositionUpdateClientPacket serverPositionUpdateClientPacket = new ServerPositionUpdateClientPacket();
+						serverPositionUpdateClientPacket.Deserialise(receivedResults.Buffer);
 
-					Player clientPlayer = players[serverPositionUpdateClientPacket.playerId - 1];
-					
-					try {
-						if (clientPlayer.timeLastPositionReceived < timeElapsed) {
-							clientPlayer.timeLastPositionReceived = timeElapsed;
-							clientPlayer.timeSinceLastPositionUpdate = 0;
-							clientPlayer.mostRecentReceivedPosition = serverPositionUpdateClientPacket.position;
-							clientPlayer.mostRecentReceivedVelocity = serverPositionUpdateClientPacket.velocity;
+						Player clientPlayer = players[serverPositionUpdateClientPacket.playerId - 1];
+						
+						try {
+							if (clientPlayer.timeLastPositionReceived < timeElapsed) {
+								clientPlayer.timeLastPositionReceived = timeElapsed;
+								clientPlayer.timeSinceLastPositionUpdate = 0;
+								clientPlayer.mostRecentReceivedPosition = serverPositionUpdateClientPacket.position;
+								clientPlayer.mostRecentReceivedVelocity = serverPositionUpdateClientPacket.velocity;
+							}
+						} catch (NullReferenceException e) {
+
 						}
-					} catch (NullReferenceException e) {
-
 					}
 					break;
 				case PacketType.PositionUpdateServer:
-					ServerPositionUpdateServerPacket serverPositionUpdateServerPacket = new ServerPositionUpdateServerPacket();
-					serverPositionUpdateServerPacket.Deserialise(receivedResults.Buffer);
-					
-					try {
-						for (int i = 0; i < serverPositionUpdateServerPacket.playerCount; i++) {
-							if (players[i].timeLastPositionReceived < timeElapsed) {
-								players[i].timeLastPositionReceived = timeElapsed;
-								players[i].timeSinceLastPositionUpdate = 0;
-								players[i].mostRecentReceivedPosition = serverPositionUpdateServerPacket.position[i];
-								players[i].mostRecentReceivedVelocity = serverPositionUpdateServerPacket.velocity[i];
+					if (gameStarted) {
+						ServerPositionUpdateServerPacket serverPositionUpdateServerPacket = new ServerPositionUpdateServerPacket();
+						serverPositionUpdateServerPacket.Deserialise(receivedResults.Buffer);
+						
+						try {
+							for (int i = 0; i < serverPositionUpdateServerPacket.playerCount; i++) {
+								if (players[i].timeLastPositionReceived < timeElapsed) {
+									players[i].timeLastPositionReceived = timeElapsed;
+									players[i].timeSinceLastPositionUpdate = 0;
+									players[i].mostRecentReceivedPosition = serverPositionUpdateServerPacket.position[i];
+									players[i].mostRecentReceivedVelocity = serverPositionUpdateServerPacket.velocity[i];
+								}
 							}
-						}
-					} catch (NullReferenceException e) {
+						} catch (NullReferenceException e) {
 
+						}
 					}
 					break;
 				case PacketType.CollisionServer:
-					CollisionServerPacket collisionServerPacket = new CollisionServerPacket();
-					collisionServerPacket.Deserialise(receivedResults.Buffer);
-					
-					if (playerId == 1 && isServer)
-						players[playerId - 1].Launch(collisionServerPacket.position, collisionServerPacket.normal, collisionServerPacket.playerPosition);
-					else if (isServer)
-						SendCollisionClient(collisionServerPacket.position, collisionServerPacket.normal, collisionServerPacket.playerPosition, collisionServerPacket.playerId);
+					if (gameStarted) {
+						CollisionServerPacket collisionServerPacket = new CollisionServerPacket();
+						collisionServerPacket.Deserialise(receivedResults.Buffer);
+						
+						if (collisionServerPacket.playerId == 1 && isServer)
+							players[playerId - 1].Launch(collisionServerPacket.position, collisionServerPacket.normal, collisionServerPacket.playerPosition);
+						else if (isServer)
+							SendCollisionClient(collisionServerPacket.position, collisionServerPacket.normal, collisionServerPacket.playerPosition, collisionServerPacket.playerId);
+					}
 					break;
 				case PacketType.CollisionClient:
-					CollisionClientPacket collisionClientPacket = new CollisionClientPacket();
-					collisionClientPacket.Deserialise(receivedResults.Buffer);
-					
-        			GD.Print("Launch packet received");
-					players[playerId - 1].Launch(collisionClientPacket.position, collisionClientPacket.normal, collisionClientPacket.playerPosition);
-					//SendCollisionClient(collisionServerPacket.position, collisionServerPacket.normal, collisionServerPacket.playerPosition, collisionServerPacket.playerId - 1);
+					if (gameStarted) {
+						CollisionClientPacket collisionClientPacket = new CollisionClientPacket();
+						collisionClientPacket.Deserialise(receivedResults.Buffer);
+						
+						GD.Print("Launch packet received");
+						players[playerId - 1].Launch(collisionClientPacket.position, collisionClientPacket.normal, collisionClientPacket.playerPosition);
+					}
 					break;
 			}
 
@@ -437,25 +458,33 @@ public class NetworkManager : Node
 		timeSinceLastTimeSync += dt;
 		timeSinceLastPositionUpdate += dt;
 
+		//Check for connection health, load the menu back if a connection is dropped while the game is in progress.
 		foreach (var connection in connections.ToList()) {
 			connection.timeSinceLastPacketReceived += dt;
 			if (connection.timeSinceLastPacketReceived > 10f) {
 				connections.Remove(connection);
 
 				if (gameStarted) {
+					gameStarted = false;
 					sceneSwitcher.LoadMenu();
+					foreach (Node playerNode in GetChildren()) {
+						playerNode.QueueFree();
+					}
+					players = new Player[0];
+					udpClient.Close();
+					udpClient = null;
 				}
 			}
 		}
 
-		if (isServer && timeSinceLastTimeSync > 5f) {
+		if (isServer && timeSinceLastTimeSync > timeSyncFrequency) {
 			SendTimeSync();
 			timeSinceLastTimeSync = 0;
 		}
 
 		
 		gameStartedMutex.WaitOne();
-		if (gameStarted && timeSinceLastPositionUpdate > .05f) {
+		if (gameStarted && timeSinceLastPositionUpdate > positionUpdateFrequency) {
 			if (isServer) {
 				SendPositionUpdateServer();
 			} else {

@@ -2,7 +2,7 @@ using Godot;
 using System;
 using System.Text;
 
-using System.Net.Sockets;
+using System.Net;
 
 public class MenuManager : Control
 {
@@ -14,7 +14,7 @@ public class MenuManager : Control
 	private Button submitButton, connectButton;
 	private TextEdit ipTextBox, portTextBox;
 	private RichTextLabel debugTextLabel;
-	private Label ipLabel, portLabel;
+	private Label ipLabel, portLabel, ipAddressLabel;
 	private CheckBox checkBox;
 
 	Random rnd = new Random();
@@ -30,6 +30,7 @@ public class MenuManager : Control
 		debugTextLabel = GetNode<RichTextLabel>("DebugTextLabel");
 		checkBox = GetNode<CheckBox>("CheckBox");
 
+		ipAddressLabel = GetNode<Label>("IpAddressLabel");
 		ipLabel = GetNode<Label>("IpLabel");
 		portLabel = GetNode<Label>("PortLabel");
 		
@@ -39,6 +40,12 @@ public class MenuManager : Control
 		submitButton.Connect("pressed", this, "NetworkSubmit");
 		checkBox.Connect("pressed", this, "ToggleIsServer");
 
+		//Display external IP
+		string externalIpString = new WebClient().DownloadString("http://icanhazip.com").Replace("\\r\\n", "").Replace("\\n", "").Trim();
+    	var externalIp = IPAddress.Parse(externalIpString);
+		ipAddressLabel.Text = $"External IP: {externalIp}";
+		
+        Input.SetMouseMode(Input.MouseMode.Visible);
 	}
 
 	public void NetworkConnect() {

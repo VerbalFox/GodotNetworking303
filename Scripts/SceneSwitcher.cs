@@ -18,6 +18,7 @@ public class SceneSwitcher : Node
         AddChild(currentLevel);
     }
 
+    //Unload scene then load new instance of scene.
     public void LoadMenu() {
         GetChild(0).QueueFree();
 

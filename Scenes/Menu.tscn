@@ -95,3 +95,13 @@ text = "IP:"
 __meta__ = {
 "_edit_use_anchors_": false
 }
+
+[node name="IpAddressLabel" type="Label" parent="."]
+margin_left = 34.0
+margin_top = 499.0
+margin_right = 64.0
+margin_bottom = 513.0
+text = "External ip address here"
+__meta__ = {
+"_edit_use_anchors_": false
+}

@@ -32,7 +32,15 @@ depth = 100.0
 material = SubResource( 1 )
 
 [node name="CSGBox3" type="CSGBox" parent="Root3D"]
-transform = Transform( 0.928304, 0.371822, 0, -0.371822, 0.928304, 0, 0, 0, 1, -35.3551, -3.1916, -0.0368862 )
+transform = Transform( 0.928304, 0.371822, 0, -0.371822, 0.928304, 0, 0, 0, 1, -39.3231, -3.09359, 0.000696197 )
+use_collision = true
 width = 21.236
 height = 10.808
 depth = 14.509
+
+[node name="CSGCylinder" type="CSGCylinder" parent="Root3D/CSGBox3"]
+transform = Transform( -0.371822, -0.928304, 0, 0.928304, -0.371822, 0, 0, 0, 1, 0.0664749, 3.46472, 0.0368862 )
+operation = 2
+radius = 3.328
+height = 25.307
+sides = 27
